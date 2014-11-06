@@ -1,8 +1,19 @@
 
 //Author: Don Oktrova 2014
+//THIS VERSION IS NOT BACKWARD COMPATIBLE IT RETURNS DOM ELEMENTS INSTEAD OF HTML STRING 
 function DataBind(templateElement, data, rootDataKey) {
-    var children = templateElement.getElementsByTagName("*");
+    if (typeof overwrite === "undefined") { overwrite = false; }
+
+    if (Array.isArray(data)) {
+        var boundConatiner = document.createElement("div");
+        for (var i = 0; i < data.length; i++)
+            boundConatiner.appendChild(this.DataBind(templateElement, data[i], overwrite));
+        templateElement.innerHTML = boundConatiner.innerHTML;
+        return templateElement;
+    }
+
     var templateHTML = templateElement.innerHTML;
+    var children = templateElement.getElementsByTagName("*");
     var currentElement;
 
     for (var c = 0; c < children.length; c++) {
@@ -10,18 +21,18 @@ function DataBind(templateElement, data, rootDataKey) {
 
         for (var a = 0; a < children[c].attributes.length; a++) {
             if (currentElement.attributes[a].name.indexOf("data-") != -1) {
-                var dataKey = currentElement.attributes[currentElement.attributes[a].name].value;
+                var dataAttribute = currentElement.attributes[a];
+                var dataKey = dataAttribute.value;
                 var dataKeys;
-                var dataValue;
-                var attributeName = currentElement.attributes[a].name.replace("data-", "");
+                var dataValue = "";
+                var attributeName = dataAttribute.name.replace("data-", "");
+                currentElement.removeAttribute(dataAttribute.name);
 
-                //Parse data keys
                 if (dataKey.indexOf(rootDataKey) != -1)
                     dataKey = dataKey.replace(rootDataKey + ".", "");
                 else if (rootDataKey != null)
                     continue;
 
-                //Assigning dataValue from the proper hierarchy
                 if (dataKey.indexOf(".") != -1) {
                     dataKeys = dataKey.split(".");
                     switch (dataKeys.length) {
@@ -38,12 +49,12 @@ function DataBind(templateElement, data, rootDataKey) {
                     dataValue = data[dataKey];
                 }
 
-                //Arrays Handling
                 if (Array.isArray(dataValue)) {
-                    var boundHtml = "";
+                    var boundConatiner = document.createElement("div");
                     for (var d = 0; d < dataValue.length; d++)
-                        boundHtml += this.DataBind(currentElement, dataValue[d], dataKey, d);
-                    currentElement.innerHTML = boundHtml;
+                        boundConatiner.appendChild(this.DataBind(currentElement, dataValue[d], overwrite, dataKey, d));
+
+                    currentElement.innerHTML = boundConatiner.innerHTML;
                 } else if (dataValue != null && attributeName != null) {
                     switch (attributeName) {
                         case "text":
@@ -59,8 +70,10 @@ function DataBind(templateElement, data, rootDataKey) {
         }
     }
 
-    //Reset Template
-    var boundElement = templateElement.innerHTML;
+    if (overwrite)
+        return templateElement;
+
+    var boundElement = templateElement.firstElementChild.cloneNode(true);
     templateElement.innerHTML = templateHTML;
     return boundElement;
 }
